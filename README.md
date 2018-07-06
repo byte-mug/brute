@@ -4,7 +4,7 @@ An eventually consistent database and a testground for replication/clustering te
 
 # Technology
 
-Strongly inspired by Amazon Dynamo and Amazon SimpleDB
+Somehow inspired by Amazon Dynamo and Amazon SimpleDB
 
 The core idea is to accumulate write operations which are idempotent and commutative,
 and to make an eventually consistent datastore with those operations. Those operations
@@ -23,8 +23,8 @@ requiring these merge operations to be idempotent and commutative.
 An example is the Timestamp-based Last-Write-Wins
 
 ```
-key => (timestamp,"put",value)
-key => (timestamp,"delete")
+key => (timestamp,TRUE,value)
+key => (timestamp,FALSE)
 
 ```
 
