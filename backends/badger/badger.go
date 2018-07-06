@@ -27,7 +27,6 @@ import "github.com/byte-mug/brute/api"
 import "github.com/dgraph-io/badger"
 import "sync"
 
-
 type Badger struct{
 	DB      *badger.DB
 	Merger  api.MergerFactory
@@ -65,7 +64,7 @@ func (b *Badger) Submit(key, item []byte) (ok bool) {
 		if err!=nil { return nil }
 		v,err := w.Value()
 		if err!=nil { return err }
-		r,ch := b.merge(item,v)
+		r,ch := b.merge(v,item)
 		if ch {
 			return txn.Set(key,r)
 		}
@@ -79,7 +78,8 @@ func (b *Badger) Obtain(key []byte) (item []byte,ok,readable bool) {
 		if err==badger.ErrKeyNotFound { readable = true }
 		if err!=nil { return nil }
 		item,err = elem.Value()
-		ok = err!=nil
+		ok = err==nil
+		readable = true
 		return nil
 	})
 	return

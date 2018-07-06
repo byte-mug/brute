@@ -70,4 +70,29 @@ func (lww *LastWriteWins) Cleanup() {
 var _ api.Merger = (*LastWriteWins)(nil)
 func LWW_Factory() api.Merger { return new(LastWriteWins) }
 
+func LWW_Put(value []byte) (item []byte) {
+	t := time.Now().UTC()
+	item,_ = msgpack.Marshal(t,true,value)
+	return
+}
+func LWW_Delete() (item []byte) {
+	t := time.Now().UTC()
+	item,_ = msgpack.Marshal(t,false)
+	return
+}
+
+func LWW_Decode(item []byte, in_ok,readable bool) (value []byte,ok bool) {
+	ok = in_ok
+	if !(ok&&readable) { return nil,false }
+	dec := msgpack.NewDecoder(bytes.NewReader(item))
+	_,err := dec.DecodeTime()
+	if err!=nil { return nil,false }
+	ok,err = dec.DecodeBool()
+	if err!=nil { return nil,false }
+	if !ok { return }
+	value,err = dec.DecodeBytes()
+	if err!=nil { return nil,false }
+	return
+}
+
 
