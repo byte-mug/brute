@@ -28,7 +28,6 @@ import (
 	"database/sql"
 	"time"
 	"os"
-	"strings"
 )
 
 type DBType uint
@@ -58,15 +57,19 @@ func (t DBType) sqlType(s string) string {
 	return s
 }
 func (t DBType) subst(s string) string {
-	switch {
-	case strings.HasPrefix(s,"a-"):
-		return t.sqlArg(s[2:])
-	case strings.HasPrefix(s,"i-"):
-		return t.sqlType(s[2:])
+	if len(s)>=2 {
+		switch s[:2]{
+		case "a-":
+			return t.sqlArg(s[2:])
+		case "t-":
+			return t.sqlType(s[2:])
+		}
 	}
-	switch {
-	case strings.HasPrefix(s,"a"):
-		return t.sqlArg(s[1:])
+	if len(s)>=1 {
+		switch s[0] {
+		case 'a':
+			return t.sqlArg(s[1:])
+		}
 	}
 	switch s {
 	case "now":
@@ -76,18 +79,31 @@ func (t DBType) subst(s string) string {
 	}
 	return ""
 }
-func (t DBType) Expand(s string) string { return os.Expand(s,t.subst) }
+func (t DBType) Expand(s string) string {
+	return os.Expand(s,t.subst)
+}
 
 type TypedDB struct {
 	*sql.DB
 	DBType
+}
+func (t *TypedDB) Mutate(query string, args ...interface{}) (sql.Result, error) {
+	switch t.DBType {
+	case DBT_QL:
+		tx,err := t.Begin()
+		if err!=nil { return nil,err }
+		r,err := tx.Exec(query,args...)
+		if err!=nil { tx.Rollback() } else { err = tx.Commit() }
+		return r,err
+	}
+	return t.Exec(query,args...)
 }
 
 const DbTimeVecTable = `
 	CREATE TABLE tmvec (
 		v_node ${t-string} NOT NULL,
 		v_time ${t-time} NOT NULL );
-	CREATE ${unique} INDEX ON tmvec (v_node);
+	CREATE ${unique} INDEX tmvec_pk ON tmvec (v_node);
 `
 
 
@@ -107,9 +123,9 @@ func (db *DbTimeVec) Query(t *replicator.TimeVecQuery) error {
 }
 func (db *DbTimeVec) Update(t *replicator.TimeVecQuery) (err error) {
 	if t.Exist {
-		_,err = db.DB.Exec(db.DB.Expand(`UPDATE tmvec SET v_time = $a1 WHERE v_node = $a2`),t.Value,t.Node)
+		_,err = db.DB.Mutate(db.DB.Expand(`UPDATE tmvec SET v_time = $a1 WHERE v_node = $a2`),t.Value,t.Node)
 	} else {
-		_,err = db.DB.Exec(db.DB.Expand(`INSERT INTO tmvec (v_node,v_time) VALUES ($a1,$a2)`),t.Node,t.Value)
+		_,err = db.DB.Mutate(db.DB.Expand(`INSERT INTO tmvec (v_node,v_time) VALUES ($a1,$a2)`),t.Node,t.Value)
 	}
 	return
 }
@@ -121,6 +137,7 @@ func (db *DbTimeVec) Extract(r map[string]time.Time) error {
 	for rs.Next() {
 		err = rs.Scan(&k,&v)
 		if err!=nil { return err }
+		r[k] = v
 	}
 	return nil
 }
@@ -129,7 +146,8 @@ const DbLocalUpdateLogTable = `
 	CREATE TABLE updlog (
 		u_key  ${t-blob} NOT NULL,
 		u_time ${t-time} NOT NULL );
-	CREATE ${unique} INDEX ON updlog (u_key);
+	CREATE ${unique} INDEX updlog_pk ON updlog (u_key);
+	CREATE INDEX updlog_tm ON updlog (u_time);
 `
 
 type DbLocalUpdateLog struct {
@@ -145,9 +163,9 @@ func (db *DbLocalUpdateLog) Query(t *replicator.LocalUpdateEntry) error {
 }
 func (db *DbLocalUpdateLog) Update(t *replicator.LocalUpdateEntry) (err error) {
 	if t.Exist {
-		_,err = db.DB.Exec(db.DB.Expand(`UPDATE updlog SET u_time = $a1 WHERE u_key = $a2`),t.Change,t.Key)
+		_,err = db.DB.Mutate(db.DB.Expand(`UPDATE updlog SET u_time = $a1 WHERE u_key = $a2`),t.Change,t.Key)
 	} else {
-		_,err = db.DB.Exec(db.DB.Expand(`INSERT INTO updlog (u_key,u_time) VALUES ($a1,$a2)`),t.Key,t.Change)
+		_,err = db.DB.Mutate(db.DB.Expand(`INSERT INTO updlog (u_key,u_time) VALUES ($a1,$a2)`),t.Key,t.Change)
 	}
 	return
 }
