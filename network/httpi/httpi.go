@@ -129,7 +129,7 @@ func (c *Client) Stream(f func(key, item []byte)) {
 	var key,item []byte
 	i := []interface{}{&key,&item}
 	for {
-		err = dec.Decode(i...)
+		err = dec.DecodeMulti(i...)
 		if err!=nil { return }
 		f(key,item)
 	}

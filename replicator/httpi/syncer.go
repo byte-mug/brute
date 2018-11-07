@@ -68,7 +68,7 @@ func (s *Syncer) GetVersion(node,addr string) (*time.Time,error) {
 	defer resp.Body.Close()
 	dec := msgpack.NewDecoder(bufio.NewReader(resp.Body))
 	
-	err = dec.Decode(&exist,&t)
+	err = dec.DecodeMulti(&exist,&t)
 	if err!=nil { return nil,err }
 	
 	if exist { return &t,nil }
@@ -100,7 +100,7 @@ func (s *Syncer) SyncWith(node,addr string, remote *time.Time) error {
 	//batch := (s.Api)
 	
 	for {
-		err = dec.Decode(i...)
+		err = dec.DecodeMulti(i...)
 		if err!=nil { break }
 		if ok {
 			ok = batch.Submit(key,item)

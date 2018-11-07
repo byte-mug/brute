@@ -25,6 +25,7 @@ package datatypes
 
 import "time"
 import "github.com/vmihailenco/msgpack"
+import "github.com/byte-mug/golibs/msgpackx"
 import "github.com/byte-mug/brute/api"
 
 type tableRowField struct{
@@ -38,7 +39,7 @@ func (t *tableRowField) DecodeMsgpack(dec *msgpack.Decoder) (err error) {
 	return
 }
 func (t *tableRowField) EncodeMsgpack(enc *msgpack.Encoder) error {
-	return enc.Encode(t.ts,t.value)
+	return enc.EncodeMulti(t.ts,t.value)
 }
 
 type tableRow map[string]*tableRowField
@@ -54,14 +55,14 @@ func (t *TableMerger) Init(item []byte) {
 	t.dts = time.Time{}
 	var m tableRow
 	var dts time.Time
-	if msgpack.Unmarshal(item,&dts,&m)!=nil { return }
+	if msgpackx.Unmarshal(item,&dts,&m)!=nil { return }
 	t.currentRow = m
 	t.dts = dts
 }
 func (t *TableMerger) Merge(item []byte) {
 	var m tableRow
 	var dts time.Time
-	if msgpack.Unmarshal(item,&dts,&m)!=nil { return }
+	if msgpackx.Unmarshal(item,&dts,&m)!=nil { return }
 	if t.currentRow==nil {
 		t.currentRow = m
 		t.changed = true
@@ -94,7 +95,7 @@ func (t *TableMerger) Changed() bool {
 	return t.changed
 }
 func (t *TableMerger) Result() []byte {
-	bts,_ := msgpack.Marshal(t.dts,t.currentRow)
+	bts,_ := msgpackx.Marshal(t.dts,t.currentRow)
 	return bts
 }
 func (t *TableMerger) Cleanup() { t.currentRow = nil }
@@ -109,13 +110,13 @@ func Table_Put(src Row) (item []byte) {
 	m := make(tableRow)
 	for k,v := range src { m[k] = &tableRowField{t,v} }
 	
-	item,_ = msgpack.Marshal(time.Time{},m)
+	item,_ = msgpackx.Marshal(time.Time{},m)
 	return
 }
 func Table_Delete() (item []byte) {
 	t := time.Now().UTC()
 	m := make(tableRow)
-	item,_ = msgpack.Marshal(t,m)
+	item,_ = msgpackx.Marshal(t,m)
 	return
 }
 
@@ -124,7 +125,7 @@ func Table_Decode(item []byte, in_ok,readable bool) (value Row,ok bool) {
 	if !(ok&&readable) { return nil,false }
 	var m tableRow
 	var dts time.Time
-	err := msgpack.Unmarshal(item,&dts,&m)
+	err := msgpackx.Unmarshal(item,&dts,&m)
 	if err!=nil { return nil,false }
 	if len(m)==0 { return nil,false }
 	value = make(Row)

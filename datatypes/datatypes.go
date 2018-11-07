@@ -23,6 +23,7 @@ SOFTWARE.
 
 package datatypes
 
+import "github.com/byte-mug/golibs/msgpackx"
 import "github.com/byte-mug/brute/api"
 import "github.com/vmihailenco/msgpack"
 import "bytes"
@@ -72,12 +73,12 @@ func LWW_Factory() api.Merger { return new(LastWriteWins) }
 
 func LWW_Put(value []byte) (item []byte) {
 	t := time.Now().UTC()
-	item,_ = msgpack.Marshal(t,true,value)
+	item,_ = msgpackx.Marshal(t,true,value)
 	return
 }
 func LWW_Delete() (item []byte) {
 	t := time.Now().UTC()
-	item,_ = msgpack.Marshal(t,false)
+	item,_ = msgpackx.Marshal(t,false)
 	return
 }
 

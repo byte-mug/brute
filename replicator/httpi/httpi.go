@@ -67,7 +67,7 @@ func (s *Server) getSince(w http.ResponseWriter, r *http.Request, ps httprouter.
 		item,ok,readable := s.Api.Obtain(lue.Key)
 		ok = ok&&readable
 		if !ok { item = nil }
-		err = enc.Encode(lue.Key,lue.Change,ok,item)
+		err = enc.EncodeMulti(lue.Key,lue.Change,ok,item)
 		if err!=nil { return }
 	}
 }
@@ -79,7 +79,7 @@ func (s *Server) getVersion(w http.ResponseWriter, r *http.Request, ps httproute
 	
 	tvq := &replicator.TimeVecQuery{Node: s.Node}
 	s.Vec.Query(tvq)
-	enc.Encode(tvq.Exist,tvq.Value)
+	enc.EncodeMulti(tvq.Exist,tvq.Value)
 }
 func (s *Server) Register(r *httprouter.Router) {
 	r.GET("/"+s.DBN+"/p2p-s/:since",s.getSince  )
